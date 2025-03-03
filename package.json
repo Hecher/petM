@@ -12,7 +12,10 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
     "@terrylinla/react-native-sketch-canvas": "^0.8.0",
+    "axios": "^1.8.1",
+    "buffer": "^6.0.3",
     "expo": "~52.0.31",
+    "expo-file-system": "~18.0.10",
     "expo-image-picker": "~16.0.6",
     "expo-status-bar": "~2.0.1",
     "react": "18.3.1",
