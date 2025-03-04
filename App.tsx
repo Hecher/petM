@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker'
 import { StyleSheet, Text, SafeAreaView, TouchableOpacity, Button, Image, View, Alert } from 'react-native';
 import { openCamera, openGallery } from './utils/imagePicker';
@@ -7,138 +8,70 @@ import axios from 'axios';
 
 
 export default function App() {
-  let res:string|null = '';
-  const [photo, setPhoto] = useState<{ uri: string } | null>(null);
-  const [serverResponse, setServerResponse] = useState<string | null>(null);
-  const [image, setImage] = useState<any | null>(null);
-  useEffect(() => {
-    if (image) {
-      console.log("Calling uploadPhoto with:", image);
-      uploadPhoto(image);
-      //setImage(null);
-    }
-  },[image])
-
-  // Пробуем взять изображение через expo
-  // const pickImage = async () => {
-  //   let result = await ImagePicker.launchImageLibraryAsync({
-  //     mediaTypes: ['images'],
-  //     allowsEditing: true,
-  //     aspect: [4,3],
-  //     quality:1,
-  //     base64: true, 
-  //   }).then(result => {
-  //     if (!result.canceled) {
-  //       setPhoto({ uri: result.assets[0].uri }); // Исправлено: доступ к URI через result.assets[0].uri
-  //       uploadPhoto(result.assets[0].uri); // Передаем URI напрямую
-  //     }
-  //     const currentImage = image;
-  //     //console.log(currentImage)
-  //     console.log(result)
-  //     console.log(image);
-  //   })
-  //   .catch(error => console.error(error.message))
-  // }
+  const [uploading, setUploading] = useState(false);
   const pickImage = async () => {
     try {
-      let result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 3],
         quality: 1,
-        base64: true, // Включаем base64
       });
-  
-      if (!result.canceled) {
-        const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`; // Формируем base64 строку
-        console.log(base64String)
-        setPhoto({ uri: base64String }); // Сохраняем base64 строку
-        uploadPhoto(base64String); // Передаем base64 строку
-      }
-  
-      console.log(result); // Логируем результат
-    } catch (error:any) {
-      console.error(error.message); // Ловим ошибки
-    }
-  };
 
-  const cameraPress = async () => {
-    await openGallery(setPhoto);
-    console.log('test1');
-    if (photo) {
-      console.log('test1');
-      uploadPhoto(photo.uri);
-      console.log('test2');
-    }
-  };
+      if (result.canceled) return;
 
-  // const uploadPhoto = async (photoUri: any) => {
-  //   if (!photoUri) {
-  //     console.error("uploadPhoto called with an EMPTY URI!");
-  //     return;
-  //   }
-  
-  //   console.log(photoUri)
-  //   const formData = new FormData();
-  //   formData.append('file', {
-  //     uri: photoUri, // URI изображения
-  //     name: 'photo.jpg', // Имя файла
-  //     type: 'image/jpeg', // Тип файла
-  //   } as any); // Приведение типа для TypeScript
-  //   console.log(formData);
-    
-
-  //   try {
-  //     // const response = await Axios.postForm('http://localhost:3000/image/upload',{
-  //     //   photo: photoUri.uri
-  //     // })
-  //     // const response = await fetch('http://localhost:3000/image/upload', {
-  //     //   method: 'POST',
-  //     //   body: photoUri.uri,
-  //     //   headers: {
-  //     //     'Content-Type': 'multipart/form-data',
-  //     //   },
-  //     // });
-  //     const response = await axios.post('http://localhost:3000/image/uploadf', formData, {
-  //       headers: {
-  //         'Content-Type': 'multipart/form-data', // Указываем тип контента
-  //       },
-  //     });
-      
-  //     setServerResponse(response.data);
-  //     Alert.alert('Успех', `Фото загружено! Ответ сервера: ${response.data}`);
-  //   } catch (error) {
-  //     Alert.alert('Ошибка', 'Не удалось загрузить фото.');
-  //   }
-  // };
-  const uploadPhoto = async (photoUri: string) => {
-    if (!photoUri) {
-      console.error("uploadPhoto called with an EMPTY URI!");
-      return;
-    }
-  
-    const formData = new FormData();
-    formData.append('file', {
-      uri: photoUri,
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-    } as any);
-  
-    try {
-      const response = await axios.post('http://localhost:3000/image/uploadf', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-  
-      setServerResponse(response.data);
-      Alert.alert('Успех', `Фото загружено! Ответ сервера: ${JSON.stringify(response.data)}`);
+      const uri = result.assets[0].uri;
+      await uploadImage(uri);
     } catch (error) {
-      console.error(error);
-      Alert.alert('Ошибка', 'Не удалось загрузить фото.');
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
+  const uploadImage = async (uri: string) => {
+    setUploading(true);
+    console.log('File URI:', uri);
 
+    // const fileInfo = await FileSystem.getInfoAsync(uri);
+    // console.log(fileInfo.exists)
+    // if (!fileInfo.exists) {
+    //   console.log('aaaaaaaaaaaaaaaaa')
+    //   Alert.alert('Error', 'File does not exist');
+    //   return;
+    // }
+    // console.log(fileInfo.exists)
+    let fileType = uri.substring(uri.lastIndexOf(".") + 1);
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: `photo.${fileType}`,
+      type: 'image/${fileType}',
+    } as any);
+    
+    // const formDataEntries = Array.from(formData as any._parts);
+    // console.log('[DEBUG] FormData:', formDataEntries);
+
+    try {
+      const response = await fetch('http://localhost:3000/image/upload', {
+        method: 'POST', 
+        body: formData,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "multipart/form-data"
+        }
+        // headers: {
+        //   'Content-Type': 'multipart/form-data',
+        // },
+      });
+      console.log('[DEBUG] Response status:', response.status);
+      if (!response.ok) throw new Error('Upload failed');
+      Alert.alert('Success', 'Image uploaded!');
+    } catch (error) {
+      Alert.alert('Error', 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  
+  
   const drawingPress = () => console.log('режим рисунка')
   const loginPress = () => console.log('вход')
   const registrPress = () => console.log('регистрация')
@@ -153,7 +86,7 @@ export default function App() {
         {/* Блок кнопок */}
         <View style={styles.buttonContainer}>
           {/* Кнопка фотография */}
-          <TouchableOpacity style={styles.button} onPress={cameraPress}>
+          <TouchableOpacity style={styles.button} onPress={drawingPress}>
             <Image source={require('./assets/camera.png')} />
             <Text> Камера</Text>
           </TouchableOpacity>
